@@ -151,6 +151,7 @@ int main(int argc, char** argv)
 	//	vectorA[i] = static_cast<int32_t>(i);
 	//}
 
+	// data from http://dev.theomader.com/gaussian-kernel-calculator/ with sigma 1 and size 3
 	float vectorB[] = {
 		0.077847,	0.123317,	0.077847,
 		0.123317,	0.195346,	0.123317,
