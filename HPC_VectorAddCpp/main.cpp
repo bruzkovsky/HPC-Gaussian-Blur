@@ -253,17 +253,27 @@ int main(int argc, char** argv)
 	checkStatus(clGetDeviceInfo(device, CL_DEVICE_MAX_WORK_ITEM_SIZES, maxWorkItemDimensions * sizeof(size_t), maxWorkItemSizes, NULL));
 
 	size_t globalWorkSize;
-	if (imageSize > maxWorkItemSizes[0])
-		globalWorkSize = static_cast<size_t>(imageSize);
-	else
+	if (imageWidth > maxWorkItemSizes[0])
 		globalWorkSize = static_cast<size_t>(maxWorkItemSizes[0]);
+	else
+		globalWorkSize = static_cast<size_t>(imageWidth);
+
+	printf("Max work item size: %d; using %d\n", maxWorkItemSizes[0], globalWorkSize);
 
 	free(maxWorkItemSizes);
+
+	size_t localWorkSize = 64;
+
+	printf("Local work size: %d\n", localWorkSize);
 
 	printf("Executing kernel for image width/height %d/%d\n", imageWidth, imageHeight);
 
 	// execute the kernel
-	checkStatus(clEnqueueNDRangeKernel(commandQueue, kernel, 1, NULL, &globalWorkSize, NULL, 0, NULL, NULL));
+	for (unsigned int i = 0; i < imageSize; i += globalWorkSize)
+	{
+		size_t offset = static_cast<size_t>(i);
+		checkStatus(clEnqueueNDRangeKernel(commandQueue, kernel, 1, &offset, &globalWorkSize, &localWorkSize, 0, NULL, NULL));
+	}
 
 	// read the device output buffer to the host output array
 	checkStatus(clEnqueueReadBuffer(commandQueue, bufferC, CL_TRUE, 0, imageSize, vectorC, 0, NULL, NULL));
