@@ -1,6 +1,7 @@
 ﻿#define CL_USE_DEPRECATED_OPENCL_1_2_APIS
 
 #include "CL/cl.h"
+#include "tga.h"
 #include <malloc.h>
 #include <fstream>
 #include <string>
@@ -63,7 +64,7 @@ std::string cl_errorstring(cl_int err)
 	}
 }
 
-void checkStatus(cl_int err) 
+void checkStatus(cl_int err)
 {
 	if (err != CL_SUCCESS) {
 		printf("OpenCL Error: %s \n", cl_errorstring(err).c_str());
@@ -75,7 +76,7 @@ void printCompilerError(cl_program program, cl_device_id device)
 {
 	cl_int status;
 	size_t logSize;
-	char *log;
+	char* log;
 
 	// get log size
 	status = clGetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG, 0, NULL, &logSize);
@@ -104,31 +105,64 @@ void printVector(int32_t* vector, unsigned int elementSize, const char* label)
 	{
 		printf("%d ", vector[i]);
 	}
-	
+
 	printf("\n");
 }
 
-int main(int argc, char **argv) 
+void printCharVector(unsigned char* vector, unsigned int elementSize, const char* label)
 {
-	// input and output arrays
-	const unsigned int elementSize = 10;
-	size_t dataSize = elementSize * sizeof(int32_t);
-	int32_t *vectorA = static_cast<int32_t*>(malloc(dataSize));
-	int32_t *vectorB = static_cast<int32_t*>(malloc(dataSize));
-	int32_t *vectorC = static_cast<int32_t*>(malloc(dataSize));
+	printf("%s:\n", label);
 
 	for (unsigned int i = 0; i < elementSize; ++i)
 	{
-		vectorA[i] = static_cast<int32_t>(i);
-		vectorB[i] = static_cast<int32_t>(i);
+		printf("%d ", vector[i]);
 	}
-	
+
+	printf("\n");
+}
+
+int main(int argc, char** argv)
+{
+	tga::TGAImage image;
+	bool loaded = tga::LoadTGA(&image, "image.tga");
+	if (!loaded)
+	{
+		printf("Error: TGA file could not be loaded.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	size_t imageSize = image.imageData.size();
+	unsigned char* imageData = image.imageData.data();
+
+	cl_int imageWidth = image.width * 4;
+	cl_int imageHeight = image.height * 4;
+
+	// output result
+	//printCharVector(image.imageData.data(), imageSize, "Input image");
+
+	// input and output arrays
+	const unsigned int filterSize = 9;
+	size_t dataSize = filterSize * sizeof(int32_t);
+	//int32_t* vectorA = static_cast<int32_t*>(malloc(dataSize));
+	unsigned char* vectorC = static_cast<unsigned char *>(malloc(imageSize));
+
+	//for (unsigned int i = 0; i < filterSize; ++i)
+	//{
+	//	vectorA[i] = static_cast<int32_t>(i);
+	//}
+
+	float vectorB[] = {
+		0.077847,	0.123317,	0.077847,
+		0.123317,	0.195346,	0.123317,
+		0.077847,	0.123317,	0.077847
+	};
+
 	// used for checking error status of api calls
 	cl_int status;
 
 	// retrieve the number of platforms
 	cl_uint numPlatforms = 0;
-	checkStatus(clGetPlatformIDs(0, NULL, &numPlatforms));
+	clGetPlatformIDs(0, NULL, &numPlatforms);
 
 	if (numPlatforms == 0)
 	{
@@ -163,17 +197,17 @@ int main(int argc, char **argv)
 	checkStatus(status);
 
 	// allocate two input and one output buffer for the three vectors
-	cl_mem bufferA = clCreateBuffer(context, CL_MEM_READ_ONLY, dataSize, NULL, &status);
+	cl_mem bufferA = clCreateBuffer(context, CL_MEM_READ_ONLY, imageSize, NULL, &status);
 	checkStatus(status);
 	cl_mem bufferB = clCreateBuffer(context, CL_MEM_READ_ONLY, dataSize, NULL, &status);
 	checkStatus(status);
-	cl_mem bufferC = clCreateBuffer(context, CL_MEM_WRITE_ONLY, dataSize, NULL, &status);
+	cl_mem bufferC = clCreateBuffer(context, CL_MEM_WRITE_ONLY, imageSize, NULL, &status);
 	checkStatus(status);
 
 	// write data from the input vectors to the buffers
-	checkStatus(clEnqueueWriteBuffer(commandQueue, bufferA, CL_TRUE, 0, dataSize, vectorA, 0, NULL, NULL));
+	checkStatus(clEnqueueWriteBuffer(commandQueue, bufferA, CL_TRUE, 0, imageSize, imageData, 0, NULL, NULL));
 	checkStatus(clEnqueueWriteBuffer(commandQueue, bufferB, CL_TRUE, 0, dataSize, vectorB, 0, NULL, NULL));
-	
+
 	// read the kernel source
 	const char* kernelFileName = "kernel.cl";
 	std::ifstream ifs(kernelFileName);
@@ -200,46 +234,104 @@ int main(int argc, char **argv)
 	}
 
 	// create the vector addition kernel
-	cl_kernel kernel = clCreateKernel(program, "vector_add", &status);
+	cl_kernel kernel = clCreateKernel(program, "gaussian_blur", &status);
 	checkStatus(status);
 
 	// set the kernel arguments
 	checkStatus(clSetKernelArg(kernel, 0, sizeof(cl_mem), &bufferA));
 	checkStatus(clSetKernelArg(kernel, 1, sizeof(cl_mem), &bufferB));
 	checkStatus(clSetKernelArg(kernel, 2, sizeof(cl_mem), &bufferC));
+	checkStatus(clSetKernelArg(kernel, 3, sizeof(cl_int), &imageWidth));
+	checkStatus(clSetKernelArg(kernel, 4, sizeof(cl_int), &imageHeight));
 
 	// define an index space of work-items for execution
 	cl_uint maxWorkItemDimensions;
 	checkStatus(clGetDeviceInfo(device, CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS, sizeof(cl_uint), &maxWorkItemDimensions, NULL));
-	
+
 	size_t* maxWorkItemSizes = static_cast<size_t*>(malloc(maxWorkItemDimensions * sizeof(size_t)));
 	checkStatus(clGetDeviceInfo(device, CL_DEVICE_MAX_WORK_ITEM_SIZES, maxWorkItemDimensions * sizeof(size_t), maxWorkItemSizes, NULL));
 
-	if (elementSize > maxWorkItemSizes[0])
-	{
-		printf("Error: Too many elements to process - maximum elements allowed: %zu\n", maxWorkItemSizes[0]);
-		exit(EXIT_FAILURE);
-	}
+	size_t globalWorkSize;
+	if (imageSize > maxWorkItemSizes[0])
+		globalWorkSize = static_cast<size_t>(imageSize);
+	else
+		globalWorkSize = static_cast<size_t>(maxWorkItemSizes[0]);
 
 	free(maxWorkItemSizes);
-	size_t globalWorkSize = static_cast<size_t>(elementSize);
+
+	printf("Executing kernel for image width/height %d/%d\n", imageWidth, imageHeight);
 
 	// execute the kernel
 	checkStatus(clEnqueueNDRangeKernel(commandQueue, kernel, 1, NULL, &globalWorkSize, NULL, 0, NULL, NULL));
 
 	// read the device output buffer to the host output array
-	checkStatus(clEnqueueReadBuffer(commandQueue, bufferC, CL_TRUE, 0, dataSize, vectorC, 0, NULL, NULL));
+	checkStatus(clEnqueueReadBuffer(commandQueue, bufferC, CL_TRUE, 0, imageSize, vectorC, 0, NULL, NULL));
 
-	// output result
-	printVector(vectorA, elementSize, "Input A");
-	printVector(vectorB, elementSize, "Input B");
-	printVector(vectorC, elementSize, "Output C");
+	// CPP implementation
+	//
+	//for (unsigned int i = 0; i < imageSize; i++)
+	//{
+	//	int row = i / imageWidth;
+	//	int col = i % imageWidth;
+
+	//	if (i % 4 == 3)
+	//	{
+	//		vectorC[i] = 255;
+	//		continue;
+	//	}
+
+	//	if (col < 4 || col >= imageWidth - 4 || row < 4 || row >= imageHeight - 4)
+	//		continue;
+
+	//	float sum = 0.0f;
+	//	sum += imageData[(i - imageWidth) - 1] * vectorB[8];
+	//	sum += imageData[i - imageWidth] * vectorB[7];
+	//	sum += imageData[(i - imageWidth) + 1] * vectorB[6];
+	//	sum += imageData[i - 1] * vectorB[5];
+	//	sum += imageData[i] * vectorB[4];
+	//	sum += imageData[i + 1] * vectorB[3];
+	//	sum += imageData[i + imageWidth - 1] * vectorB[2];
+	//	sum += imageData[i + imageWidth] * vectorB[1];
+	//	sum += imageData[i + imageWidth + 1] * vectorB[0];
+
+	//	//printf("data: %d; sum: %f\n", imageData[i], sum);
+
+	//	vectorC[i] = sum;
+	//}
+
+	//printVector(vectorB, elementSize, "Input B");
+	printCharVector(vectorC, imageSize, "Output C");
+
+	tga::TGAImage resultImage;
+
+	resultImage.bpp = image.bpp;
+	resultImage.width = image.width;
+	resultImage.height = image.height;
+	resultImage.type = image.type;
+
+	resultImage.imageData = std::vector<unsigned char>(imageSize);
+
+	for (unsigned int i = 0; i < imageSize; i++)
+		resultImage.imageData[i] = vectorC[i];
+
+	tga::saveTGA(resultImage, "output.tga");
+
+	/*int currentByte = 0;
+
+	for (int py = 0; py < resultImage.height; ++py)
+		for (int px = 0; px < resultImage.width; ++px)
+		{
+			resultImage.imageData[currentByte++] = image.imageData[currentByte];
+			resultImage.imageData[currentByte++] = image.imageData[currentByte];
+			resultImage.imageData[currentByte++] = image.imageData[currentByte];
+		}*/
 
 	// release allocated resources
 	free(vectorC);
-	free(vectorB);
-	free(vectorA);
-	 
+	//free(vectorB);
+	//free(vectorA);
+	//free(imageData);
+
 	// release opencl objects
 	checkStatus(clReleaseKernel(kernel));
 	checkStatus(clReleaseProgram(program));
@@ -248,6 +340,6 @@ int main(int argc, char **argv)
 	checkStatus(clReleaseMemObject(bufferA));
 	checkStatus(clReleaseCommandQueue(commandQueue));
 	checkStatus(clReleaseContext(context));
-	
+
 	exit(EXIT_SUCCESS);
 }
