@@ -11,8 +11,10 @@ __kernel void gaussian_blur(
 	size_t id = get_global_id(0);
 	size_t localId = get_local_id(0);
 	size_t localSize = get_local_size(0);
+	size_t groupId = get_group_id(0);
+	size_t numGroups = get_num_groups(0);
 
-	//printf("Global: %d Local: %d LocalSize: %d\n", id, localId, localSize);
+	//printf("Global: %d Local: %d LocalSize: %d GroupId: %d NumGroups: %d\n", id, localId, localSize, groupId, numGroups);
 	 
 	int row = id / width;
 	int col = id % width;
