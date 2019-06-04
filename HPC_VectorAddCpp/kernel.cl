@@ -13,17 +13,20 @@ __kernel void gaussian_blur(
 	 int row = id / width;
 	 int col = id % width;
 
+	// omit alpha channel
 	if (id % 4 == 3)
 	{
 		C[id] = 255;
 		return;
 	}
 
+	// omit border
 	if (col < 4 || col >= width - 4 || row < 4 || row >= height - 4)
 		return;
 
 	 //printf("Apply (%d | %d)\n", row, col);
 
+	 // calculate value for pixel by matrix mult
 	 float sum = 0.0f;
 	 sum += A[id - width - 1] * B[8];
 	 sum += A[id - width] * B[7];

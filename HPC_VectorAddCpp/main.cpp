@@ -301,7 +301,7 @@ int main(int argc, char** argv)
 	//}
 
 	//printVector(vectorB, elementSize, "Input B");
-	printCharVector(vectorC, imageSize, "Output C");
+	//printCharVector(vectorC, imageSize, "Output C");
 
 	tga::TGAImage resultImage;
 
