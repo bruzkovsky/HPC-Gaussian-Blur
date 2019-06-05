@@ -141,8 +141,9 @@ int main(int argc, char** argv)
 	//printCharVector(image.imageData.data(), imageSize, "Input image");
 
 	// input and output arrays
-	const unsigned int filterSize = 9;
-	size_t dataSize = filterSize * sizeof(int32_t);
+	cl_int filterWidth = 3;
+	cl_int filterHeight = 3;
+	size_t dataSize = filterWidth * filterHeight * sizeof(float);
 	//int32_t* vectorA = static_cast<int32_t*>(malloc(dataSize));
 	unsigned char* vectorC = static_cast<unsigned char *>(malloc(imageSize));
 
@@ -234,7 +235,7 @@ int main(int argc, char** argv)
 		exit(EXIT_FAILURE);
 	}
 
-	// create the vector addition kernel
+	// create the gaussian blur kernel
 	cl_kernel kernel = clCreateKernel(program, "gaussian_blur", &status);
 	checkStatus(status);
 
@@ -244,6 +245,8 @@ int main(int argc, char** argv)
 	checkStatus(clSetKernelArg(kernel, 2, sizeof(cl_mem), &bufferC));
 	checkStatus(clSetKernelArg(kernel, 3, sizeof(cl_int), &imageWidth));
 	checkStatus(clSetKernelArg(kernel, 4, sizeof(cl_int), &imageHeight));
+	checkStatus(clSetKernelArg(kernel, 5, sizeof(cl_int), &filterWidth));
+	checkStatus(clSetKernelArg(kernel, 6, sizeof(cl_int), &filterHeight));
 
 	// define an index space of work-items for execution
 	cl_uint maxWorkItemDimensions;

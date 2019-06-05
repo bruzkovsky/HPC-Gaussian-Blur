@@ -6,7 +6,9 @@ __kernel void gaussian_blur(
 	__global const float *B,
 	__global unsigned char *C,
 	int width,
-	int height)
+	int height,
+	int filterWidth,
+	int filterHeight)
 {
 	size_t id = get_global_id(0);
 	size_t localId = get_local_id(0);
@@ -37,15 +39,15 @@ __kernel void gaussian_blur(
 
 	 // calculate value for pixel by matrix mult
 	 float sum = 0.0f;
-	 sum += A[id - width - 1] * B[8];
-	 sum += A[id - width] * B[7];
-	 sum += A[id - width + 1] * B[6];
-	 sum += A[id - 1] * B[5];
-	 sum += A[id] * B[4];
-	 sum += A[id + 1] * B[3];
-	 sum += A[id + width - 1] * B[2];
-	 sum += A[id + width] * B[1];
-	 sum += A[id + width + 1] * B[0];
+
+	 if (filterWidth == filterHeight)
+	 {
+		 for (unsigned int i = 0; i < filterWidth * filterHeight; i++)
+		 {
+			 int pos = filterWidth / 2 - (i % filterWidth);
+			 sum += A[id + width + pos] * B[i];
+		 }
+	 }
 
 	 //printf("Calculated %f\n", sum);
 
