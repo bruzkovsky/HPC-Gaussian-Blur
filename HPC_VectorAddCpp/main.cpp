@@ -275,7 +275,21 @@ int main(int argc, char** argv)
 
 	printf("Executing kernel for image width/height %d/%d\n", imageWidth, imageHeight);
 
-	// execute the kernel
+	// execute the kernel first pass
+	for (unsigned int i = 0; i < imageSize; i += globalWorkSize)
+	{
+		size_t offset = static_cast<size_t>(i);
+		checkStatus(clEnqueueNDRangeKernel(commandQueue, kernel, 1, &offset, &globalWorkSize, &localWorkSize, 0, NULL, NULL));
+	}
+
+	// read the device output buffer to the host output array
+	checkStatus(clEnqueueReadBuffer(commandQueue, bufferC, CL_TRUE, 0, imageSize, vectorC, 0, NULL, NULL));
+
+	checkStatus(clEnqueueWriteBuffer(commandQueue, bufferA, CL_TRUE, 0, imageSize, vectorC, 0, NULL, NULL));
+	checkStatus(clSetKernelArg(kernel, 5, sizeof(cl_int), &filterHeight));
+	checkStatus(clSetKernelArg(kernel, 6, sizeof(cl_int), &filterWidth));
+
+	// execute the kernel second pass
 	for (unsigned int i = 0; i < imageSize; i += globalWorkSize)
 	{
 		size_t offset = static_cast<size_t>(i);
