@@ -142,7 +142,7 @@ int main(int argc, char** argv)
 
 	// input and output arrays
 	cl_int filterWidth = 3;
-	cl_int filterHeight = 3;
+	cl_int filterHeight = 1;
 	size_t dataSize = filterWidth * filterHeight * sizeof(float);
 	//int32_t* vectorA = static_cast<int32_t*>(malloc(dataSize));
 	unsigned char* vectorC = static_cast<unsigned char *>(malloc(imageSize));
@@ -153,10 +153,14 @@ int main(int argc, char** argv)
 	//}
 
 	// data from http://dev.theomader.com/gaussian-kernel-calculator/ with sigma 1 and size 3
-	float vectorB[] = {
+	/*float vectorB[] = {
 		0.077847,	0.123317,	0.077847,
 		0.123317,	0.195346,	0.123317,
 		0.077847,	0.123317,	0.077847
+	};*/
+	
+	float vectorB[] = {
+		0.27901,	0.44198,	0.27901
 	};
 
 	// used for checking error status of api calls
@@ -298,15 +302,15 @@ int main(int argc, char** argv)
 	//		continue;
 
 	//	float sum = 0.0f;
-	//	sum += imageData[(i - imageWidth) - 1] * vectorB[8];
-	//	sum += imageData[i - imageWidth] * vectorB[7];
-	//	sum += imageData[(i - imageWidth) + 1] * vectorB[6];
-	//	sum += imageData[i - 1] * vectorB[5];
-	//	sum += imageData[i] * vectorB[4];
-	//	sum += imageData[i + 1] * vectorB[3];
-	//	sum += imageData[i + imageWidth - 1] * vectorB[2];
-	//	sum += imageData[i + imageWidth] * vectorB[1];
-	//	sum += imageData[i + imageWidth + 1] * vectorB[0];
+	/*	sum += imageData[(i - imageWidth) - 1] * vectorB[8];
+		sum += imageData[i - imageWidth] * vectorB[7];
+		sum += imageData[(i - imageWidth) + 1] * vectorB[6];
+		sum += imageData[i - 1] * vectorB[5];
+		sum += imageData[i] * vectorB[4];
+		sum += imageData[i + 1] * vectorB[3];
+		sum += imageData[i + imageWidth - 1] * vectorB[2];
+		sum += imageData[i + imageWidth] * vectorB[1];
+		sum += imageData[i + imageWidth + 1] * vectorB[0];*/
 
 	//	//printf("data: %d; sum: %f\n", imageData[i], sum);
 
