@@ -1,5 +1,5 @@
 /*
-* a kernel that add the elements of two vectors pairwise
+* a kernel that executes a gaussian filter
 */
 __kernel void gaussian_blur(
 	__global const unsigned char *A,

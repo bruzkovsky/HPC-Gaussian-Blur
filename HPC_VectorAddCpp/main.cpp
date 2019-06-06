@@ -262,15 +262,17 @@ int main(int argc, char** argv)
 	size_t* maxWorkItemSizes = static_cast<size_t*>(malloc(maxWorkItemDimensions * sizeof(size_t)));
 	checkStatus(clGetDeviceInfo(device, CL_DEVICE_MAX_WORK_ITEM_SIZES, maxWorkItemDimensions * sizeof(size_t), maxWorkItemSizes, NULL));
 
+	int maxWorkSize = maxWorkItemSizes[0];
+
+	free(maxWorkItemSizes);
+
 	size_t globalWorkSize;
-	if (imageWidth > maxWorkItemSizes[0])
-		globalWorkSize = static_cast<size_t>(maxWorkItemSizes[0]);
+	if (imageWidth > maxWorkSize)
+		globalWorkSize = static_cast<size_t>(maxWorkSize);
 	else
 		globalWorkSize = static_cast<size_t>(imageWidth);
 
-	printf("Max work item size: %d; using %d\n", maxWorkItemSizes[0], globalWorkSize);
-
-	free(maxWorkItemSizes);
+	printf("Max work item size: %d; using %d\n", maxWorkSize, globalWorkSize);
 
 	size_t localWorkSize = globalWorkSize;
 
@@ -301,38 +303,6 @@ int main(int argc, char** argv)
 
 	// read the device output buffer to the host output array
 	checkStatus(clEnqueueReadBuffer(commandQueue, bufferC, CL_TRUE, 0, imageSize, vectorC, 0, NULL, NULL));
-
-	// CPP implementation
-	//
-	//for (unsigned int i = 0; i < imageSize; i++)
-	//{
-	//	int row = i / imageWidth;
-	//	int col = i % imageWidth;
-
-	//	if (i % 4 == 3)
-	//	{
-	//		vectorC[i] = 255;
-	//		continue;
-	//	}
-
-	//	if (col < 4 || col >= imageWidth - 4 || row < 4 || row >= imageHeight - 4)
-	//		continue;
-
-	//	float sum = 0.0f;
-	/*	sum += imageData[(i - imageWidth) - 1] * vectorB[8];
-		sum += imageData[i - imageWidth] * vectorB[7];
-		sum += imageData[(i - imageWidth) + 1] * vectorB[6];
-		sum += imageData[i - 1] * vectorB[5];
-		sum += imageData[i] * vectorB[4];
-		sum += imageData[i + 1] * vectorB[3];
-		sum += imageData[i + imageWidth - 1] * vectorB[2];
-		sum += imageData[i + imageWidth] * vectorB[1];
-		sum += imageData[i + imageWidth + 1] * vectorB[0];*/
-
-	//	//printf("data: %d; sum: %f\n", imageData[i], sum);
-
-	//	vectorC[i] = sum;
-	//}
 
 	//printVector(vectorB, elementSize, "Input B");
 	//printCharVector(vectorC, imageSize, "Output C");
