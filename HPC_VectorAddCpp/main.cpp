@@ -259,7 +259,7 @@ int main(int argc, char** argv)
 	size_t maxWorkGroupSize;
 	checkStatus(clGetDeviceInfo(device, CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(size_t), &maxWorkGroupSize, NULL));
 
-	size_t localWorkSize = maxWorkGroupSize;
+	size_t localWorkSize = 8;
 	size_t numLocalGroups = ceil(imageSize / localWorkSize);
 	size_t globalWorkSize = localWorkSize * numLocalGroups;
 
