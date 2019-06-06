@@ -5,33 +5,38 @@ __kernel void gaussian_blur(
 	__global const unsigned char *A,
 	__global const float *B,
 	__global unsigned char *C,
+	__local unsigned char *cache,
 	int width,
 	int height,
 	int filterWidth,
 	int filterHeight)
 {
 	size_t id = get_global_id(0);
-	size_t localId = get_local_id(0);
-	size_t localSize = get_local_size(0);
-	size_t groupId = get_group_id(0);
-	size_t numGroups = get_num_groups(0);
+	size_t l_id = get_local_id(0);
+	size_t l_size = get_local_size(0);
+	size_t g_id = get_group_id(0);
+	size_t g_num = get_num_groups(0);
 
-	//printf("Global: %d Local: %d LocalSize: %d GroupId: %d NumGroups: %d\n", id, localId, localSize, groupId, numGroups);
+	//printf("Global: %d Local: %d LocalSize: %d GroupId: %d NumGroups: %d\n", id, l_id, l_size, g_id, g_num);
 	 
 	int row = id / width;
 	int col = id % width;
 
+	// init cache
+	cache[l_id] = A[id];
+	barrier(CLK_LOCAL_MEM_FENCE);
+
 	// omit alpha channel
 	if (id % 4 == 3)
 	{
-		C[id] = A[id];
+		C[id] = cache[l_id];
 		return;
 	}
 
 	// omit border
 	if (col < 4 || col >= width - 4 || row == 0 || row >= height / 4 - 1)
 	{
-		C[id] = A[id];
+		C[id] = cache[l_id];
 		return;
 	}
 
@@ -48,7 +53,7 @@ __kernel void gaussian_blur(
 			 int posX = filterWidth / 2 - (i % filterWidth);
 			 int posY = filterHeight / 2 - i / filterHeight;
 			 //printf("%d: %d|%d\n", id, posX, posY);
-			 sum += A[id + width * posY + 4 * posX] * B[i];
+			 sum += cache[l_id + width * posY + 4 * posX] * B[i];
 		 }
 	 }
 	 else if (filterHeight == 1)
@@ -58,7 +63,7 @@ __kernel void gaussian_blur(
 		 {
 			 int pos = filterWidth / 2 - i;
 			 //printf("%d: %d\n", id, pos);
-			 sum += A[id + 4 * pos] * B[i];
+			 sum += cache[l_id + 4 * pos] * B[i];
 		 }
 	 }
 	 else if (filterWidth == 1)
@@ -68,7 +73,7 @@ __kernel void gaussian_blur(
 		 {
 			 int pos = filterHeight / 2 - i;
 			 //printf("%d: %d\n", id, pos);
-			 sum += A[id + width * pos] * B[i];
+			 sum += cache[l_id + width * pos] * B[i];
 		 }
 	 }
 	 else return;

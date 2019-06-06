@@ -209,6 +209,8 @@ int main(int argc, char** argv)
 	checkStatus(status);
 	cl_mem bufferC = clCreateBuffer(context, CL_MEM_WRITE_ONLY, imageSize, NULL, &status);
 	checkStatus(status);
+	cl_mem bufferD = clCreateBuffer(context, CL_MEM_WRITE_ONLY, dataSize, NULL, &status);
+	checkStatus(status);
 
 	// write data from the input vectors to the buffers
 	checkStatus(clEnqueueWriteBuffer(commandQueue, bufferA, CL_TRUE, 0, imageSize, imageData, 0, NULL, NULL));
@@ -247,10 +249,11 @@ int main(int argc, char** argv)
 	checkStatus(clSetKernelArg(kernel, 0, sizeof(cl_mem), &bufferA));
 	checkStatus(clSetKernelArg(kernel, 1, sizeof(cl_mem), &bufferB));
 	checkStatus(clSetKernelArg(kernel, 2, sizeof(cl_mem), &bufferC));
-	checkStatus(clSetKernelArg(kernel, 3, sizeof(cl_int), &imageWidth));
-	checkStatus(clSetKernelArg(kernel, 4, sizeof(cl_int), &imageHeight));
-	checkStatus(clSetKernelArg(kernel, 5, sizeof(cl_int), &filterWidth));
-	checkStatus(clSetKernelArg(kernel, 6, sizeof(cl_int), &filterHeight));
+	checkStatus(clSetKernelArg(kernel, 3, sizeof(cl_mem), &bufferD));
+	checkStatus(clSetKernelArg(kernel, 4, sizeof(cl_int), &imageWidth));
+	checkStatus(clSetKernelArg(kernel, 5, sizeof(cl_int), &imageHeight));
+	checkStatus(clSetKernelArg(kernel, 6, sizeof(cl_int), &filterWidth));
+	checkStatus(clSetKernelArg(kernel, 7, sizeof(cl_int), &filterHeight));
 
 	// define an index space of work-items for execution
 	cl_uint maxWorkItemDimensions;
@@ -269,7 +272,7 @@ int main(int argc, char** argv)
 
 	free(maxWorkItemSizes);
 
-	size_t localWorkSize = 64;
+	size_t localWorkSize = globalWorkSize;
 
 	printf("Local work size: %d\n", localWorkSize);
 
@@ -348,25 +351,14 @@ int main(int argc, char** argv)
 
 	tga::saveTGA(resultImage, "output.tga");
 
-	/*int currentByte = 0;
-
-	for (int py = 0; py < resultImage.height; ++py)
-		for (int px = 0; px < resultImage.width; ++px)
-		{
-			resultImage.imageData[currentByte++] = image.imageData[currentByte];
-			resultImage.imageData[currentByte++] = image.imageData[currentByte];
-			resultImage.imageData[currentByte++] = image.imageData[currentByte];
-		}*/
-
 	// release allocated resources
 	free(vectorC);
-	//free(vectorB);
-	//free(vectorA);
-	//free(imageData);
+	free(vectorB);
 
 	// release opencl objects
 	checkStatus(clReleaseKernel(kernel));
 	checkStatus(clReleaseProgram(program));
+	checkStatus(clReleaseMemObject(bufferD));
 	checkStatus(clReleaseMemObject(bufferC));
 	checkStatus(clReleaseMemObject(bufferB));
 	checkStatus(clReleaseMemObject(bufferA));
