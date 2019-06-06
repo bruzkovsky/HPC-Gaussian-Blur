@@ -23,7 +23,39 @@ __kernel void gaussian_blur(
 	int col = id % width;
 
 	// init cache
-	cache[l_id] = A[id];
+	 if (filterWidth == filterHeight)
+	 {
+		// one-pass
+		 for (unsigned int i = 0; i < filterWidth * filterHeight; i++)
+		 {
+			 int posX = filterWidth / 2 - (i % filterWidth);
+			 int posY = filterHeight / 2 - i / filterHeight;
+			 //printf("%d: %d|%d\n", id, posX, posY);
+			 cache[l_id + width * posY + 4 * posX] = A[id + width * posY + 4 * posX];
+		 }
+	 }
+	 else if (filterHeight == 1)
+	 {
+		//two-pass horizontal
+		 for (unsigned int i = 0; i < filterWidth; i++)
+		 {
+			 int pos = filterWidth / 2 - i;
+			 //printf("%d: %d\n", id, pos);
+			 cache[l_id + 4 * pos] = A[id + 4 * pos];
+		 }
+	 }
+	 else if (filterWidth == 1)
+	 {
+		//two-pass vertical
+		 for (unsigned int i = 0; i < filterHeight; i++)
+		 {
+			 int pos = filterHeight / 2 - i;
+			 //printf("%d: %d\n", id, pos);
+			 cache[l_id + width * pos] = A[id + width * pos];
+		 }
+	 }
+	 else return;
+
 	barrier(CLK_LOCAL_MEM_FENCE);
 
 	// omit alpha channel

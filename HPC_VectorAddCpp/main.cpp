@@ -145,7 +145,7 @@ int main(int argc, char** argv)
 	cl_int filterHeight = 1;
 	size_t dataSize = filterWidth * filterHeight * sizeof(float);
 	//int32_t* vectorA = static_cast<int32_t*>(malloc(dataSize));
-	unsigned char* vectorC = static_cast<unsigned char *>(malloc(imageSize));
+	unsigned char* vectorC = static_cast<unsigned char*>(malloc(imageSize));
 
 	//for (unsigned int i = 0; i < filterSize; ++i)
 	//{
@@ -209,7 +209,7 @@ int main(int argc, char** argv)
 	checkStatus(status);
 	cl_mem bufferC = clCreateBuffer(context, CL_MEM_WRITE_ONLY, imageSize, NULL, &status);
 	checkStatus(status);
-	cl_mem bufferD = clCreateBuffer(context, CL_MEM_WRITE_ONLY, dataSize, NULL, &status);
+	cl_mem bufferD = clCreateBuffer(context, CL_MEM_WRITE_ONLY, imageSize, NULL, &status);
 	checkStatus(status);
 
 	// write data from the input vectors to the buffers
@@ -289,8 +289,8 @@ int main(int argc, char** argv)
 	checkStatus(clEnqueueReadBuffer(commandQueue, bufferC, CL_TRUE, 0, imageSize, vectorC, 0, NULL, NULL));
 
 	checkStatus(clEnqueueWriteBuffer(commandQueue, bufferA, CL_TRUE, 0, imageSize, vectorC, 0, NULL, NULL));
-	checkStatus(clSetKernelArg(kernel, 5, sizeof(cl_int), &filterHeight));
-	checkStatus(clSetKernelArg(kernel, 6, sizeof(cl_int), &filterWidth));
+	checkStatus(clSetKernelArg(kernel, 6, sizeof(cl_int), &filterHeight));
+	checkStatus(clSetKernelArg(kernel, 7, sizeof(cl_int), &filterWidth));
 
 	// execute the kernel second pass
 	for (unsigned int i = 0; i < imageSize; i += globalWorkSize)
@@ -353,7 +353,6 @@ int main(int argc, char** argv)
 
 	// release allocated resources
 	free(vectorC);
-	free(vectorB);
 
 	// release opencl objects
 	checkStatus(clReleaseKernel(kernel));
