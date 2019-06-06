@@ -259,7 +259,7 @@ int main(int argc, char** argv)
 	size_t maxWorkGroupSize;
 	checkStatus(clGetDeviceInfo(device, CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(size_t), &maxWorkGroupSize, NULL));
 
-	size_t localWorkSize = 8;
+	size_t localWorkSize = 32; // the bigger the localWorkSize, the more artefacts, so we choose a small number
 	size_t numLocalGroups = ceil(imageSize / localWorkSize);
 	size_t globalWorkSize = localWorkSize * numLocalGroups;
 
@@ -286,6 +286,19 @@ int main(int argc, char** argv)
 
 	// execute the kernel first pass
 	checkStatus(clEnqueueNDRangeKernel(commandQueue, kernel, 1, 0, &globalWorkSize, &localWorkSize, 0, NULL, NULL));
+	
+	if (filterWidth != filterHeight)
+	{
+		// execute the kernel second pass
+
+		checkStatus(clEnqueueReadBuffer(commandQueue, bufferC, CL_TRUE, 0, imageSize, vectorC, 0, NULL, NULL));
+		checkStatus(clEnqueueWriteBuffer(commandQueue, bufferA, CL_TRUE, 0, imageSize, vectorC, 0, NULL, NULL));
+
+		checkStatus(clSetKernelArg(kernel, 6, sizeof(cl_int), &filterHeight));
+		checkStatus(clSetKernelArg(kernel, 7, sizeof(cl_int), &filterWidth));
+		
+		checkStatus(clEnqueueNDRangeKernel(commandQueue, kernel, 1, 0, &globalWorkSize, &localWorkSize, 0, NULL, NULL));
+	}
 
 	// read the device output buffer to the host output array
 	checkStatus(clEnqueueReadBuffer(commandQueue, bufferC, CL_TRUE, 0, imageSize, vectorC, 0, NULL, NULL));
