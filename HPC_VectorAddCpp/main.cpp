@@ -255,51 +255,40 @@ int main(int argc, char** argv)
 	checkStatus(clSetKernelArg(kernel, 6, sizeof(cl_int), &filterWidth));
 	checkStatus(clSetKernelArg(kernel, 7, sizeof(cl_int), &filterHeight));
 
+	// define local work size
+	size_t maxWorkGroupSize;
+	checkStatus(clGetDeviceInfo(device, CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(size_t), &maxWorkGroupSize, NULL));
+
+	size_t localWorkSize = maxWorkGroupSize;
+	size_t numLocalGroups = ceil(imageSize / localWorkSize);
+	size_t globalWorkSize = localWorkSize * numLocalGroups;
+
 	// define an index space of work-items for execution
 	cl_uint maxWorkItemDimensions;
 	checkStatus(clGetDeviceInfo(device, CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS, sizeof(cl_uint), &maxWorkItemDimensions, NULL));
 
 	size_t* maxWorkItemSizes = static_cast<size_t*>(malloc(maxWorkItemDimensions * sizeof(size_t)));
 	checkStatus(clGetDeviceInfo(device, CL_DEVICE_MAX_WORK_ITEM_SIZES, maxWorkItemDimensions * sizeof(size_t), maxWorkItemSizes, NULL));
-
-	int maxWorkSize = maxWorkItemSizes[0];
-
+	
+	int maxWorkSize = 1;
+	for (unsigned int i = 0; i < maxWorkItemDimensions - 1; ++i)
+		maxWorkSize *= maxWorkItemSizes[i];
 	free(maxWorkItemSizes);
 
-	size_t globalWorkSize;
-	if (imageWidth > maxWorkSize)
-		globalWorkSize = static_cast<size_t>(maxWorkSize);
-	else
-		globalWorkSize = static_cast<size_t>(imageWidth);
+	if (globalWorkSize > maxWorkSize)
+		globalWorkSize = maxWorkSize;
 
-	printf("Max work item size: %d; using %d\n", maxWorkSize, globalWorkSize);
-
-	size_t localWorkSize = globalWorkSize;
+	printf("using work size %d\n", globalWorkSize);
 
 	printf("Local work size: %d\n", localWorkSize);
 
 	printf("Executing kernel for image width/height %d/%d\n", imageWidth, imageHeight);
 
 	// execute the kernel first pass
-	for (unsigned int i = 0; i < imageSize; i += globalWorkSize)
-	{
-		size_t offset = static_cast<size_t>(i);
-		checkStatus(clEnqueueNDRangeKernel(commandQueue, kernel, 1, &offset, &globalWorkSize, &localWorkSize, 0, NULL, NULL));
-	}
+	checkStatus(clEnqueueNDRangeKernel(commandQueue, kernel, 1, 0, &globalWorkSize, &localWorkSize, 0, NULL, NULL));
 
 	// read the device output buffer to the host output array
 	checkStatus(clEnqueueReadBuffer(commandQueue, bufferC, CL_TRUE, 0, imageSize, vectorC, 0, NULL, NULL));
-
-	checkStatus(clEnqueueWriteBuffer(commandQueue, bufferA, CL_TRUE, 0, imageSize, vectorC, 0, NULL, NULL));
-	checkStatus(clSetKernelArg(kernel, 6, sizeof(cl_int), &filterHeight));
-	checkStatus(clSetKernelArg(kernel, 7, sizeof(cl_int), &filterWidth));
-
-	// execute the kernel second pass
-	for (unsigned int i = 0; i < imageSize; i += globalWorkSize)
-	{
-		size_t offset = static_cast<size_t>(i);
-		checkStatus(clEnqueueNDRangeKernel(commandQueue, kernel, 1, &offset, &globalWorkSize, &localWorkSize, 0, NULL, NULL));
-	}
 
 	// read the device output buffer to the host output array
 	checkStatus(clEnqueueReadBuffer(commandQueue, bufferC, CL_TRUE, 0, imageSize, vectorC, 0, NULL, NULL));
